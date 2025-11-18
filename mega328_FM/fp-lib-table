@@ -1,0 +1,4 @@
+(fp_lib_table
+  (lib (name RDA5807M)(type KiCad)(uri ${KIPRJMOD}/RDA5807M.pretty)(options "")(descr ""))
+  (lib (name PAM8403_module)(type KiCad)(uri ${KIPRJMOD}/PAM8403_module.pretty)(options "")(descr ""))
+)
