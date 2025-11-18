@@ -8,8 +8,6 @@
 	
 	IR receiver (VS1838B or similar) output is connected to PD2 / INT0 (see libnecdecoder.c).
 */
-
-#include "main.h"
 #include "RDA5807M.h"
 #include "uart.h"
 #include "radio_config.h"
@@ -17,7 +15,6 @@
 #include "timer1.h"
 #include "libnecdecoder.h"
 #include "ir_remote_s1_car_mp3.h"
-#include "ui_state.h"
 #include <avr/io.h>
 #include <avr/delay.h>
 #include <avr/signal.h>			// obsluga przerwan
@@ -32,28 +29,6 @@
 #	define LOG(args)
 #endif
 
-
-#define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
-
-
-struct ui_state_s ui_state;
-
-
-enum
-{
-	SLEEP_TIMER_PER_UNIT = 300UL * 1000 / MAIN_LOOP_DELAY
-};
-
-enum
-{
-	OFF_TIMER_PER_UNIT = 60UL * 1000 / MAIN_LOOP_DELAY
-};
-
-static struct sleep_state_s
-{
-	uint32_t timer;
-} sleep_state;
-
 static void init(void)    
 {
 	DDRB = 0XFF;
@@ -64,10 +39,6 @@ static void init(void)
 	PORTC = 0Xff;	// internal pull-ups
 
 	//_delay_ms(100);
-	
-	ui_state_reset(&ui_state);
-	
-	sleep_state.timer = 0;
 	
 
 	/** \note SCL = F_CPU/(16 + 2*TWBR*Prescaler) */
@@ -126,10 +97,13 @@ int main(void)
 	
 	load_config();
 
-	RDA5807M_start();
-	if (!config.on)
+	if (config.on)
 	{
-		RDA5807M_mute(true);
+		RDA5807M_start();
+	}
+	else
+	{
+		RDA5807M_shutdown();
 	}	
 	
 	while(1)
@@ -148,250 +122,61 @@ int main(void)
 			// Reset state
 			ir.status &= ~(1<<IR_RECEIVED);
 		}
-		else
-		{
-			if (sleep_state.timer > 0)
-			{
-				sleep_state.timer--;
-				if (sleep_state.timer == 0)
-				{
-					LOG(("sleep/wake timer elapsed\n"));
-					cmd = CMD_ON_OFF;
-				}
-			}		
-		}
 
-		switch (cmd)
+		// auto search
+		if (cmd == CMD_ON_OFF)
 		{
-			case CMD_ON_OFF:
+			if (config.on)
 			{
-				if (config.on)
-				{
-					config.on = 0;
-					RDA5807M_get_status(&status);
-					//RDA5807M_shutdown();
-					RDA5807M_mute(true);
-				}
-				else
-				{
-					config.on = 1;
-					//RDA5807M_start();
-					RDA5807M_mute(false);
-				}			
-				config_changed = 1;
-				sleep_state.timer = 0;
+				config.on = 0;
+				RDA5807M_get_status(&status);
+				RDA5807M_shutdown();
 			}
-			break;
-			
-			case CMD_TUNE_DOWN:
+			else
 			{
-				RDA5807M_search(0);
-				searching = 1;
-				_delay_ms(500);
+				config.on = 1;
+				RDA5807M_start();
 			}			
-			break;
-			
-			case CMD_TUNE_UP:
+			config_changed = 1;
+		}
+		else if (cmd == CMD_TUNE_DOWN)
+		{
+			RDA5807M_search(0);
+			searching = 1;
+			_delay_ms(500);
+		}
+		else if (cmd == CMD_TUNE_UP)
+		{
+			RDA5807M_search(1);		
+			searching = 2;
+			_delay_ms(500);
+		}
+		else if (cmd == CMD_VOL_UP)
+		{
+			if (config.volume < CONFIG_MAX_VOLUME)
 			{
-				RDA5807M_search(1);		
-				searching = 2;
-				_delay_ms(500);
-			}
-			break;
-			
-			case CMD_VOL_UP:
-			{
-				if (config.volume < CONFIG_MAX_VOLUME)
-				{
-					config.volume++;
-					RDA5807M_set_volume(config.volume);
-					config_changed = 1;
-				}
-			}
-			break;
-			
-			case CMD_VOL_DOWN:
-			{
-				if (config.volume > CONFIG_MIN_VOLUME)
-				{
-					config.volume--;
-					RDA5807M_set_volume(config.volume);
-					config_changed = 1;
-				}			
-			}
-			break;
-
-			case CMD_STEREO_TOGGLE:
-			{
-				config.stereo = !config.stereo;
-				RDA5807M_set_stereo(config.stereo);
+				config.volume++;
+				RDA5807M_set_volume(config.volume);
 				config_changed = 1;
 			}
-			break;
-			
-			case CMD_SLEEP_TIMER:
-			{
-				if (ui_state.st == UI_IDLE)
-				{
-					ui_set_state(&ui_state, UI_SLEEP);
-				}
-			}
-			break;
-			
-			case CMD_CHANNEL_MEM_SET:
-			{
-				if (ui_state.st == UI_IDLE)
-				{
-					ui_set_state(&ui_state, UI_CHANNEL_SET_1);
-				}
-				else if (ui_state.st == UI_CHANNEL_SET_2)
-				{
-					// store channel memory
-					if (ui_state.channel_mem_id < sizeof(config.station_memory)/sizeof(config.station_memory[0]))
-					{
-						LOG(("Setting station #%d\n", ui_state.channel_mem_id));
-						config.station_memory[ui_state.channel_mem_id] = config.frequency;
-						config_changed = 1;
-					}					
-				}
-			}
-			break;
-			
-			case CMD_0:
-			case CMD_1:
-			case CMD_2:
-			case CMD_3:
-			case CMD_4:
-			case CMD_5:
-			case CMD_6:
-			case CMD_7:
-			case CMD_8:
-			case CMD_9:			
-			{
-				uint16_t val = cmd - CMD_0;
-				switch(ui_state.st)
-				{
-				case UI_SLEEP:
-					if (config.on)
-					{
-						sleep_state.timer = SLEEP_TIMER_PER_UNIT * val;
-						LOG(("Setting sleep timer to %lu\n", sleep_state.timer));
-					}
-					else
-					{
-						sleep_state.timer = OFF_TIMER_PER_UNIT * val;
-						LOG(("Setting wake timer to %lu\n", sleep_state.timer));
-					}
-					break;
-				case UI_CHANNEL_SET_1:
-					ui_set_state(&ui_state, UI_CHANNEL_SET_2);
-					ui_state.channel_mem_id = val;
-					break;
-				case UI_IDLE:
-					{
-						if (val < sizeof(config.station_memory)/sizeof(config.station_memory[0]))
-						{
-							if (config.station_memory[val] != 0)
-							{
-								LOG(("Tuning to station #%d\n", val));
-								config.frequency = config.station_memory[val];
-								RDA5807M_tune(config.frequency);
-								config_changed = 1;
-							}
-							else
-							{
-								LOG(("Station #%d is not configured\n", val));
-							}
-						}
-					}
-					break;
-				default:
-					LOG(("Unhandled number button (%d), ui_state.st = %d\n", val, ui_state.st));
-					break;
-				}
-			}
-			break;
-			
-			case CMD_CH_MINUS:
-			{
-				int index = 0;
-				// find current station index
-				for(int i=0; i<ARRAY_SIZE(config.station_memory); i++)
-				{
-					if (config.station_memory[i] == config.frequency)
-					{
-						index = i;
-						break;
-					}
-				}
-				LOG(("Current index = %d\n", index));
-				// move to previous valid station index
-				for(int i=0; i<ARRAY_SIZE(config.station_memory)-1; i++)
-				{
-					index--;
-					if (index < 0)
-					{
-						index = ARRAY_SIZE(config.station_memory)-1;
-					}
-					if (config.station_memory[index] != 0)
-					{
-						LOG(("Tuning to station #%d\n", index));
-						config.frequency = config.station_memory[index];
-						RDA5807M_tune(config.frequency);
-						config_changed = 1;
-						break;
-					}
-				}
-			}
-			break;
-			
-			case CMD_CH_PLUS:
-			{
-				int index = ARRAY_SIZE(config.station_memory)-1;
-				// find current station index
-				for(int i=0; i<ARRAY_SIZE(config.station_memory); i++)
-				{
-					if (config.station_memory[i] == config.frequency)
-					{
-						index = i;
-						break;
-					}
-				}
-				LOG(("Current index = %d\n", index));
-				// move to next station index
-				for(int i=0; i<ARRAY_SIZE(config.station_memory)-1; i++)
-				{
-					index++;
-					if (index >= ARRAY_SIZE(config.station_memory))
-					{
-						index = 0;
-					}
-					if (config.station_memory[index] != 0)
-					{
-						LOG(("Tuning to station #%d\n", index));
-						config.frequency = config.station_memory[index];
-						RDA5807M_tune(config.frequency);
-						config_changed = 1;
-						break;
-					}
-				}			
-			}
-			break;
-			
-			case CMD__LIMITER:
-				// no command
-			break;
-			
-			default:
-			{
-				LOG(("Unhandled command: %d\n", cmd));
-			}
-			break;			
 		}
-
+		else if (cmd == CMD_VOL_DOWN)
+		{
+			if (config.volume > CONFIG_MIN_VOLUME)
+			{
+				config.volume--;
+				RDA5807M_set_volume(config.volume);
+				config_changed = 1;
+			}			
+		}
+		else if (cmd == CMD_STEREO_TOGGLE)
+		{
+			config.stereo = !config.stereo;
+			RDA5807M_set_stereo(config.stereo);
+			config_changed = 1;
+		}
 		
-		_delay_ms(MAIN_LOOP_DELAY);
-		
+		_delay_ms(20);
 		
 		if (config.on)
 		{
@@ -434,8 +219,6 @@ int main(void)
 				config_changed = 0;
 				store_config();
 			}
-		}
-
-		ui_state_poll(&ui_state);
+		}	
 	}
 }

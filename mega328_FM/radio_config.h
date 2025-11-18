@@ -16,9 +16,6 @@ struct Config
 	uint16_t frequency;	// unit = 10kHz
 	uint8_t volume;
 	uint8_t stereo;		// forcing mono if set to 0
-	
-	uint16_t station_memory[10];	// entries are not valid (not programmed) if equal to zero
-	
 	uint16_t crc;
 };
 

@@ -51,37 +51,6 @@ enum Command ir_translate(uint8_t address, uint8_t code)
 		return CMD_VOL_DOWN;
 	case IR_EQ:
 		return CMD_STEREO_TOGGLE;
-	case IR_CH:
-		return CMD_CHANNEL_MEM_SET;
-	case IR_200:
-		return CMD_SLEEP_TIMER;
-	
-	case IR_0:
-		return CMD_0;
-	case IR_1:
-		return CMD_1;
-	case IR_2:
-		return CMD_2;
-	case IR_3:
-		return CMD_3;
-	case IR_4:
-		return CMD_4;
-	case IR_5:
-		return CMD_5;
-	case IR_6:
-		return CMD_6;
-	case IR_7:
-		return CMD_7;
-	case IR_8:
-		return CMD_8;
-	case IR_9:
-		return CMD_9;
-		
-	case IR_CH_MINUS:
-		return CMD_CH_MINUS;
-	case IR_CH_PLUS:
-		return CMD_CH_PLUS;
-	
 	}
 	return ret;
 }

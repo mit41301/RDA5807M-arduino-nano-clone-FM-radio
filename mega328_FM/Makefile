@@ -50,7 +50,7 @@ TARGET = main
 
 
 # List C source files here. (C dependencies are automatically generated.)
-SRC = $(TARGET).c avr_twi.c RDA5807M.c uart.c radio_config.c timer1.c libnecdecoder.c commands.c ui_state.c
+SRC = $(TARGET).c avr_twi.c RDA5807M.c uart.c radio_config.c timer1.c libnecdecoder.c commands.c
 SRC += ir_remote_s1_car_mp3.c
 
 
@@ -180,7 +180,7 @@ AVRDUDE_PROGRAMMER = arduino
 
 # com1 = serial port. Use lpt1 to connect to parallel port.
 #AVRDUDE_PORT = usb
-AVRDUDE_PORT = com26
+AVRDUDE_PORT = com24
 
 AVRDUDE_WRITE_FLASH = -U flash:w:$(TARGET).hex
 #AVRDUDE_WRITE_EEPROM = -U eeprom:w:eeprom.hex

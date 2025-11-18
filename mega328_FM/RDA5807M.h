@@ -2,7 +2,6 @@
 #define RDA5807M_H
 
 #include <stdint.h>
-#include <stdbool.h>
 
 uint8_t RDA5807M_init(void);
 
@@ -28,8 +27,6 @@ struct RDA5807M_status
 };
 
 uint8_t RDA5807M_get_status(struct RDA5807M_status *status);
-
-void RDA5807M_mute(bool state);
 
 void RDA5807M_shutdown(void);
 

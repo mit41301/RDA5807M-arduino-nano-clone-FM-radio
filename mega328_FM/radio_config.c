@@ -2,7 +2,6 @@
 #include <avr/crc16.h>		
 #include <avr/eeprom.h>
 #include <stdio.h>
-#include <string.h>
 
 
 #define LOCAL_DEBUG
@@ -52,8 +51,6 @@ void load_config(void)
 	if (!loc1valid && !loc2valid)
 	{
 		// default config
-		memset(&config, 0, sizeof(config));
-		
 		config.id = 0;
 		config.on = 1;
 		config.frequency = 9990;

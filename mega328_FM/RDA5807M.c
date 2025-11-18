@@ -166,10 +166,9 @@ uint8_t RDA5807M_init(void)
 	regs[R7].reg_addr = 0x07;
 	regs[R7].value = 0x4000 | R7_65M_50M_MODE | R7_SOFTBLEND_EN;
 
-	// reset before actual writing
+	// reset
 	regs[R2].value |= R2_SOFT_RESET;
-	RDA5807M_write_reg(R2);
-
+	RDA5807M_write_reg(R2);	
 	regs[R2].value &= ~R2_SOFT_RESET;
 	
     return RDA5807M_write();
@@ -354,24 +353,9 @@ void RDA5807M_set_stereo(uint8_t on)
 	RDA5807M_write_reg(R2);
 }
 
-void RDA5807M_mute(bool state)
-{
-	if (state)
-	{
-		regs[R2].value &= ~R2_DMUTE;
-	}
-	else
-	{
-		regs[R2].value |= R2_DMUTE;
-	}
-	RDA5807M_write_reg(R2);
-}
-
 void RDA5807M_shutdown(void)
 {
-	LOG(("shutdown\n"));	
+	LOG(("shutdown\n"));
 	regs[R2].value &= ~R2_ENABLE;
 	RDA5807M_write_reg(R2);
 }
-
-
