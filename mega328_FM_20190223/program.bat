@@ -1,0 +1,1 @@
+D:\progs\Arduino\hardware\tools\avr/bin/avrdude -CD:\progs\Arduino\hardware\tools\avr/etc/avrdude.conf -patmega328p -carduino -PCOM16 -b57600 -D -Uflash:w:main.hex:i
